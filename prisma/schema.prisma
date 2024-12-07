@@ -1,0 +1,134 @@
+// This is your Prisma schema file
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  name         String?
+  lectures     Lecture[]
+  quizAttempts QuizAttempt[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  flashcardReview FlashcardReview[]
+}
+
+model Lecture {
+  id            String         @id @default(uuid())
+  title         String
+  description   String?
+  files         File[]
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  flashcardSets FlashcardSet[]
+  quizzes       Quiz[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model File {
+  id           String   @id @default(uuid())
+  filename     String
+  originalName String
+  path         String
+  mimeType     String
+  size         Int
+  lectureId    String
+  lecture      Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model FlashcardSet {
+  id         String      @id @default(uuid())
+  title      String
+  lectureId  String
+  lecture    Lecture     @relation(fields: [lectureId], references: [id])
+  flashcards Flashcard[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Flashcard {
+  id             String       @id @default(uuid())
+  front          String
+  back           String
+  flashcardSetId String
+  flashcardSet   FlashcardSet @relation(fields: [flashcardSetId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  flashcardReview FlashcardReview[]
+}
+
+model FlashcardReview {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcardId String
+  flashcard   Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+  confidence  Int
+  nextReview  DateTime
+  createdAt   DateTime  @default(now())
+}
+
+model Quiz {
+  id        String        @id @default(uuid())
+  title     String
+  questions Question[]
+  lectureId String
+  lecture   Lecture       @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  attempts  QuizAttempt[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model QuizAttempt {
+  id        String              @id @default(uuid())
+  quiz      Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  answers   QuizAttemptAnswer[]
+  score     Float
+  createdAt DateTime            @default(now())
+}
+
+model QuizAttemptAnswer {
+  id            String      @id @default(uuid())
+  quizAttemptId String
+  quizAttempt   QuizAttempt @relation(fields: [quizAttemptId], references: [id])
+  questionId    String
+  question      Question    @relation(fields: [questionId], references: [id])
+  answer        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Question {
+  id          String              @id @default(uuid())
+  question    String
+  explanation String?
+  options     QesionOption[]
+  answer      String
+  quizId      String
+  quiz        Quiz                @relation(fields: [quizId], references: [id])
+  attempts    QuizAttemptAnswer[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model QesionOption {
+  id         String   @id @default(uuid())
+  value      String
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+}
