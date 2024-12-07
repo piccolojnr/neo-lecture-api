@@ -123,33 +123,16 @@ router.get('/:id', authenticateToken, async (req: any, res: any) => {
 });
 
 // Create a new lecture
-router.post('/', authenticateToken, upload.array('files', 5), async (req: any, res: any) => {
+router.post('/', authenticateToken, async (req: any, res: any) => {
   try {
     const { title, description } = createLectureSchema.parse(req.body);
-    const files = req.files as Express.Multer.File[];
-
-    if (!files || files.length === 0) {
-      return res.status(400).json({ message: 'No files uploaded' });
-    }
 
     const lecture = await prisma.lecture.create({
       data: {
         title,
         description,
         userId: req.user!.userId,
-        files: {
-          create: files.map(file => ({
-            filename: file.filename,
-            originalName: file.originalname,
-            path: file.path,
-            mimeType: file.mimetype,
-            size: file.size,
-          }))
-        }
       },
-      include: {
-        files: true,
-      }
     });
 
     res.status(201).json(lecture);
