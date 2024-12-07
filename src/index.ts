@@ -31,12 +31,19 @@ if (!fs.existsSync(uploadsDir)) {
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: "*", // Allow the frontend
+  origin: 'http://localhost:3000', // Allow requests from the frontend
   credentials: true, // Allow cookies and credentials
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
   allowedHeaders: ['Content-Type', 'Authorization'], // Allow Authorization header
 }));
-
+// Handle preflight requests
+app.options('*', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -54,6 +61,12 @@ app.use(limiter);
 
 // Initialize global storage for lectures (temporary solution)
 app.locals.lectures = new Map();
+
+
+// health check
+app.get('/health', (req, res) => {
+  res.send('ok');
+});
 
 // Routes
 app.use('/auth', authRoutes);
