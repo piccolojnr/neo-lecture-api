@@ -34,8 +34,7 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 app.use(cors({
-  // allow all origins
-  origin: true,
+  origin: '*', // Allow all origins
   credentials: true,
 }));
 app.use(express.json());
