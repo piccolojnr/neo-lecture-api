@@ -84,10 +84,10 @@ export class AIGenerator {
     private openai: OpenAI;
     private maxRetries: number;
 
-    constructor(apiKey: string, maxRetries: number = RETRY_CONFIG.MAX_RETRIES) {
+    constructor(apiKey: string, provider: string, maxRetries: number = RETRY_CONFIG.MAX_RETRIES) {
         this.openai = new OpenAI({
             apiKey,
-            baseURL: "https://api.groq.com/openai/v1"
+            baseURL: provider === "groq" ? "https://api.groq.com/openai/v1" : null
         });
         this.maxRetries = maxRetries;
     }

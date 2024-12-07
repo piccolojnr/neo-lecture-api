@@ -73,13 +73,16 @@ router.post('/extract-text', authenticateToken, async (req: any, res: any) => {
 // Generate flashcards from chunks
 router.post('/generate/flashcards', authenticateToken, async (req: any, res: any) => {
     try {
-        const { chunks, apiKey, lectureId, title } = req.body;
+        const { chunks, apiKey, provider, lectureId, title } = req.body;
 
         if (!chunks || !apiKey || !lectureId || !title) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const generator = new AIGenerator(apiKey);
+
+
+
+        const generator = new AIGenerator(apiKey, provider);
         const flashcards = [];
 
         // Process each chunk
@@ -125,13 +128,18 @@ router.post('/generate/flashcards', authenticateToken, async (req: any, res: any
 // Generate quiz from chunks
 router.post('/generate/quiz', authenticateToken, async (req: any, res: any) => {
     try {
-        const { chunks, apiKey, lectureId, title } = req.body;
+        const { chunks, apiKey, provider, lectureId, title } = req.body;
 
         if (!chunks || !apiKey || !lectureId || !title) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const generator = new AIGenerator(apiKey);
+        if (!provider || !["openai", "groq"].includes(provider)) {
+            return res.status(400).json({ error: 'Provider is invalid' });
+
+        }
+
+        const generator = new AIGenerator(apiKey, provider);
         const questions = [];
 
         // Process each chunk

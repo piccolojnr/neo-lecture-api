@@ -9,16 +9,16 @@ generator client {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  password     String
-  name         String?
-  lectures     Lecture[]
-  quizAttempts QuizAttempt[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  flashcardReview FlashcardReview[]
+  id               String            @id @default(uuid())
+  email            String            @unique
+  password         String
+  name             String?
+  lectures         Lecture[]
+  quizAttempts     QuizAttempt[]
+  flashcardReviews FlashcardReview[]
+  apiKeys          APIKey[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model Lecture {
@@ -27,7 +27,7 @@ model Lecture {
   description   String?
   files         File[]
   userId        String
-  user          User           @relation(fields: [userId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   flashcardSets FlashcardSet[]
   quizzes       Quiz[]
   createdAt     DateTime       @default(now())
@@ -51,7 +51,7 @@ model FlashcardSet {
   id         String      @id @default(uuid())
   title      String
   lectureId  String
-  lecture    Lecture     @relation(fields: [lectureId], references: [id])
+  lecture    Lecture     @relation(fields: [lectureId], references: [id], onDelete: Cascade)
   flashcards Flashcard[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -62,7 +62,7 @@ model Flashcard {
   front          String
   back           String
   flashcardSetId String
-  flashcardSet   FlashcardSet @relation(fields: [flashcardSetId], references: [id])
+  flashcardSet   FlashcardSet @relation(fields: [flashcardSetId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -105,9 +105,9 @@ model QuizAttempt {
 model QuizAttemptAnswer {
   id            String      @id @default(uuid())
   quizAttemptId String
-  quizAttempt   QuizAttempt @relation(fields: [quizAttemptId], references: [id])
+  quizAttempt   QuizAttempt @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
   questionId    String
-  question      Question    @relation(fields: [questionId], references: [id])
+  question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
   answer        String
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -120,7 +120,7 @@ model Question {
   options     QesionOption[]
   answer      String
   quizId      String
-  quiz        Quiz                @relation(fields: [quizId], references: [id])
+  quiz        Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
   attempts    QuizAttemptAnswer[]
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
@@ -130,5 +130,18 @@ model QesionOption {
   id         String   @id @default(uuid())
   value      String
   questionId String
-  question   Question @relation(fields: [questionId], references: [id])
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model APIKey {
+  id        String   @id @default(cuid())
+  name      String // Name/description of the key (e.g., "OpenAI Key")
+  key       String // Encrypted API key
+  provider  String // e.g., "openai", "groq"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider]) // One key per provider per user
 }
