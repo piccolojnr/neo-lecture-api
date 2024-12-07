@@ -29,8 +29,13 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false,
+}));
 app.use(cors({
+  // allow all origins
+  origin: true,
   credentials: true,
 }));
 app.use(express.json());
