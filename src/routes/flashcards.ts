@@ -1,5 +1,5 @@
 import express from 'express';
-import  prisma  from '../lib/prisma';
+import prisma from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
@@ -50,7 +50,22 @@ router.get('/:id', authenticateToken, async (req: any, res: any) => {
     const flashcardSet = await prisma.flashcardSet.findUnique({
       where: { id: req.params.id },
       include: {
-        flashcards: true,
+        flashcards: {
+          select: {
+            id: true,
+            front: true,
+            back: true,
+            flashcardReview: {
+              orderBy: {
+                createdAt: 'desc'
+              },
+              take: 1,
+              select: {
+                confidence: true,
+              }
+            }
+          },
+        },
         lecture: true,
       },
     });

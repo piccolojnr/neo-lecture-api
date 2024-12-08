@@ -161,4 +161,47 @@ router.post("/flashcard/:id/review", authenticateToken, async (req: any, res: an
     }
 });
 
+// get the the flashcards that the user has reviewed in a flashcard set and their confidence levels
+// if a flashcard has not been reviewed, it will not be included in the response
+// if a flashcard has been reviewed multiple times, the most recent review will be included
+// the response will be an array of objects with the following structure:
+// {
+//   flashcardId: string,
+//   confidence: number,
+// }
+router.get("/flashcard/:setId/review", authenticateToken, async (req: any, res: any) => {
+    try {
+        const userId = req.user?.userId;
+        const setId = req.params.setId;
+
+        if (!userId) {
+            return res.status(401).json({ error: "User not authenticated" });
+        }
+
+        const reviews = await prisma.flashcardReview.findMany({
+            where: {
+                userId,
+                flashcard: {
+                    flashcardSetId: setId,
+                },
+            },
+            select: {
+                flashcardId: true,
+                confidence: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        res.json(reviews);
+    } catch (error) {
+        console.error("Error fetching flashcard reviews:", error);
+        res.status(500).json({ error: "Failed to fetch flashcard reviews" });
+    }
+});
+
+
+
+
 export default router;
