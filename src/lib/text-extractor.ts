@@ -1,37 +1,32 @@
-import mammoth from 'mammoth';
 import { decode, encode } from "gpt-tokenizer";
-import pdfParse from 'pdf-parse';
+import axios from 'axios';
 
+
+
+const api_extraction_url = process.env.API_EXTRACTION_URL || 'http://127.0.0.1:8000';
 
 export const CHUNK_SIZE = 1800;
 
 export async function extractTextFromFile(buffer: Buffer, fileType: string): Promise<string> {
-    // Use legacy build for Node
+    const formData = new FormData();
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
+    formData.append('file', blob, `file.${fileType}`);
+    formData.append('enable_ocr', 'true');
 
-    let extractedText = '';
+    const apiUrl = `${api_extraction_url}/extract`;
 
-    switch (fileType.toLowerCase()) {
-        case 'pdf':
-            const uint8Array = new Uint8Array(buffer);
-            const dataBuffer = Buffer.from(uint8Array);
-            const data = await pdfParse(dataBuffer);
+    try {
+        const response = await axios.post(apiUrl, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
 
-            extractedText = data.text;
-            break;
-        case 'docx':
-            const result = await mammoth.extractRawText({ buffer: buffer });
-            extractedText = result.value;
-            break;
-
-        case 'txt':
-            extractedText = buffer.toString('utf-8');
-            break;
-
-        default:
-            throw new Error('Unsupported file type');
+        return response.data.extracted_text;
+    } catch (error: any) {
+        console.error('Error extracting text from FastAPI:', error.message);
+        throw new Error('Failed to extract text from FastAPI');
     }
-
-    return extractedText;
 }
 
 

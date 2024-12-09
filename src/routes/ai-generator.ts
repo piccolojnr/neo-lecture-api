@@ -29,13 +29,6 @@ router.post('/extract-text', authenticateToken, async (req: any, res: any) => {
             return res.status(404).json({ error: 'No matching files found for the given lecture and fileIds' });
         }
 
-        const allowedTypes = [
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'text/plain',
-        ];
-
         const results = [];
 
         for (const fileRecord of files) {
@@ -46,6 +39,12 @@ router.post('/extract-text', authenticateToken, async (req: any, res: any) => {
             const fileBuffer = await fs.readFile(fileRecord.path);
 
             // Validate MIME type
+            const allowedTypes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'text/plain',
+            ];
             if (!allowedTypes.includes(fileRecord.mimeType)) {
                 throw new Error(`Invalid file type: ${fileRecord.originalName}`);
             }
@@ -55,6 +54,7 @@ router.post('/extract-text', authenticateToken, async (req: any, res: any) => {
                 throw new Error(`File size exceeds 10MB limit: ${fileRecord.originalName}`);
             }
 
+            // Extract text via FastAPI
             const text = await extractTextFromFile(fileBuffer, fileType);
             results.push({ fileName: fileRecord.originalName, text });
         }
@@ -78,9 +78,6 @@ router.post('/generate/flashcards', authenticateToken, async (req: any, res: any
         if (!chunks || !apiKey || !lectureId || !title) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
-
-
-
 
         const generator = new AIGenerator(apiKey, provider);
         const flashcards = [];

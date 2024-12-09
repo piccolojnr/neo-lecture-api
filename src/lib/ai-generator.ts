@@ -1,5 +1,6 @@
 import OpenAI, { type APIError } from 'openai';
 import { z } from 'zod';
+import fs from 'fs/promises';
 
 export const CHUNK_SIZE = 1800;
 export const RETRY_CONFIG = {
@@ -160,6 +161,7 @@ export class AIGenerator {
             return true;
         } catch (error: any) {
             console.error("Content :", content);
+
             console.error("Content validation error:", error);
             return false;
         }
@@ -188,6 +190,8 @@ export class AIGenerator {
         const result = await this.processWithRetry(quizPrompt(text));
         const parsedResults = this.parseResults(result, 'quiz');
         if (!this.validateContent(parsedResults, 'quiz')) {
+            // write the content to a file
+            await fs.writeFile('quiz-error.json', JSON.stringify(parsedResults, null, 2));
             throw new Error("Generated quiz content failed validation");
         }
         return parsedResults;
@@ -197,6 +201,8 @@ export class AIGenerator {
         const result = await this.processWithRetry(flashcardPrompt(text));
         const parsedResults = this.parseResults(result, 'flashcard');
         if (!this.validateContent(parsedResults, 'flashcard')) {
+            // write the content to a file
+            await fs.writeFile('flashcard-error.json', JSON.stringify(parsedResults, null, 2));
             throw new Error("Generated flashcard content failed validation");
         }
         return parsedResults;
