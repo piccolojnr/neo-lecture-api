@@ -279,7 +279,7 @@ router.delete('/:lectureId/files/:fileId', authenticateToken, async (req: any, r
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    const file = lecture.files.find(f => f.id === fileId);
+    const file = lecture.files.find((f: any) => f.id === fileId);
     if (!file) {
       return res.status(404).json({ message: 'File not found' });
     }
