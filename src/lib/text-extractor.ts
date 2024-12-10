@@ -1,8 +1,6 @@
 import { decode, encode } from "gpt-tokenizer";
 import axios from 'axios';
 
-
-
 const api_extraction_url = process.env.API_EXTRACTION_URL || 'http://127.0.0.1:8000';
 
 export const CHUNK_SIZE = 1800;
