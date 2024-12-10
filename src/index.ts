@@ -16,6 +16,7 @@ import quizRoutes from './routes/quizzes';
 import userRoutes from './routes/users';
 import aiGeneratorRoutes from './routes/ai-generator';
 import apiKeyRoutes from './routes/api-keys';
+import adminRoutes from './routes/admin';
 
 // Load environment variables
 dotenv.config();
@@ -78,6 +79,7 @@ app.use('/quizzes', quizRoutes);
 app.use('/users', userRoutes);
 app.use('/ai', aiGeneratorRoutes);
 app.use('/api-keys', apiKeyRoutes);
+app.use('/admin', adminRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

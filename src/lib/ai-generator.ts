@@ -1,6 +1,7 @@
 import OpenAI, { type APIError } from 'openai';
 import { z } from 'zod';
 import fs from 'fs/promises';
+import Logger from './logger';
 
 export const CHUNK_SIZE = 1800;
 export const RETRY_CONFIG = {
@@ -70,12 +71,15 @@ The flashcard format is as follows:
 
 Instructions for Flashcard Generation:
 1. Each flashcard should contain a clear question/concept on the front and comprehensive answer/explanation on the back.
-3. AdditionalNotes can include examples, clarifications, or mathematical equations formatted in markdown.
-4. Break down complex topics or math problems into multiple flashcards for clarity.
-5. Strictly use the given format without deviating from it.
-8. If mathematical content is included, format equations properly using markdown.
-9. Try to keep the back concise and to the point.
-10. Try to cover every thing in the chunk if possible and meet the requirements.
+2. format the chunk first and then break it down into flashcards.
+3. source the information from the chunk and make sure to include all relevant details.
+3. if the information in the chunk is wrong correct it before breaking it down into flashcards.
+4. the chunks might is a part of a bigger chunk that was broken down into smaller chunks, so the information might be incomplete, if so, correct it.
+5. Break down complex topics or math problems into multiple flashcards for clarity.
+6. Strictly use the given format without deviating from it.
+7. If mathematical content is included, format equations properly using markdown.
+8. Try to keep the back concise and to the point.
+9. Try to cover every thing in the chunk if possible and meet the requirements.
 
 Text Chunk:
 
@@ -84,19 +88,18 @@ ${chunk}`;
 export class AIGenerator {
     private openai: OpenAI;
     private maxRetries: number;
+    private logger: Logger;
 
-    constructor(apiKey: string, provider: string, maxRetries: number = RETRY_CONFIG.MAX_RETRIES) {
+    constructor(apiKey: string, provider: string, maxRetries: number = RETRY_CONFIG.MAX_RETRIES, logFilePath: string = 'error.log') {
         this.openai = new OpenAI({
             apiKey,
-            baseURL: provider === "groq" ? "https://api.groq.com/openai/v1" : null
+            baseURL: provider === "groq" ? "https://api.groq.com/openai/v1" : null,
         });
         this.maxRetries = maxRetries;
+        this.logger = new Logger(logFilePath);
     }
 
-    private async processWithRetry(
-        prompt: string,
-        attempt: number = 0
-    ): Promise<any> {
+    private async processWithRetry(prompt: string, attempt: number = 0): Promise<any> {
         try {
             const completion = await this.openai.chat.completions.create({
                 model: 'llama-3.1-70b-versatile',
@@ -120,30 +123,26 @@ export class AIGenerator {
 
             return JSON.parse(content);
         } catch (error: APIError | any) {
+            const context = { prompt, attempt };
+            await this.logger.logError(error, context);
+
             if (attempt >= this.maxRetries) {
-                // Check if the error contains `failed_generation`
                 if (error?.error?.failed_generation) {
                     try {
-                        // Parse the failed_generation string
-                        const failedData = JSON.parse(`[${error.error.failed_generation}]`);
+                        const failedData = JSON.parse('[' + error.error.failed_generation + ']');
                         return failedData;
                     } catch (parseError) {
                         console.error("Failed to parse failed_generation: ", parseError);
                         throw new Error("Failed to parse failed generation data");
                     }
                 }
-
-                console.error("Error after max retries: ", error);
-                throw error;
             }
 
-            // Retry logic
             const delay = this.calculateRetryDelay(attempt);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
             return this.processWithRetry(prompt, attempt + 1);
         }
     }
-
 
     private calculateRetryDelay(attempt: number): number {
         const exponentialDelay = Math.min(
@@ -153,20 +152,6 @@ export class AIGenerator {
         const jitter = exponentialDelay * RETRY_CONFIG.JITTER * Math.random();
         return exponentialDelay + jitter;
     }
-
-    private validateContent(content: any, type: 'quiz' | 'flashcard'): boolean {
-        try {
-            const schema = type === 'quiz' ? quizSchema : flashcardSchema;
-            schema.parse(content);
-            return true;
-        } catch (error: any) {
-            console.error("Content :", content);
-
-            console.error("Content validation error:", error);
-            return false;
-        }
-    }
-
     private parseResults(results: any, type: 'quiz' | 'flashcard'): any[] {
         // result might be an object or an array
         if (Array.isArray(results)) {
@@ -186,25 +171,51 @@ export class AIGenerator {
 
         return [];
     }
-    public async generateQuizzes(text: string): Promise<any> {
-        const result = await this.processWithRetry(quizPrompt(text));
-        const parsedResults = this.parseResults(result, 'quiz');
-        if (!this.validateContent(parsedResults, 'quiz')) {
-            // write the content to a file
-            await fs.writeFile('quiz-error.json', JSON.stringify(parsedResults, null, 2));
-            throw new Error("Generated quiz content failed validation");
+    private validateContent(content: any, type: 'quiz' | 'flashcard'): boolean {
+        try {
+            const schema = type === 'quiz' ? quizSchema : flashcardSchema;
+            schema.parse(content);
+            return true;
+        } catch (error: any) {
+            console.error("Content :", content);
+
+            console.error("Content validation error:", error);
+            return false;
         }
-        return parsedResults;
+    }
+    public async generateQuizzes(text: string): Promise<any> {
+        try {
+            const result = await this.processWithRetry(quizPrompt(text));
+            const parsedResults = this.parseResults(result, 'quiz');
+            if (!this.validateContent(parsedResults, 'quiz')) {
+                await this.logger.logError(
+                    new Error("Validation failed for quiz content"),
+                    { parsedResults }
+                );
+                throw new Error("Generated quiz content failed validation");
+            }
+            return parsedResults;
+        } catch (error) {
+            await this.logger.logError(error, { text });
+            throw error;
+        }
     }
 
     public async generateFlashcards(text: string): Promise<any> {
-        const result = await this.processWithRetry(flashcardPrompt(text));
-        const parsedResults = this.parseResults(result, 'flashcard');
-        if (!this.validateContent(parsedResults, 'flashcard')) {
-            // write the content to a file
-            await fs.writeFile('flashcard-error.json', JSON.stringify(parsedResults, null, 2));
-            throw new Error("Generated flashcard content failed validation");
+        try {
+            const result = await this.processWithRetry(flashcardPrompt(text));
+            const parsedResults = this.parseResults(result, 'flashcard');
+            if (!this.validateContent(parsedResults, 'flashcard')) {
+                await this.logger.logError(
+                    new Error("Validation failed for flashcard content"),
+                    { parsedResults }
+                );
+                throw new Error("Generated flashcard content failed validation");
+            }
+            return parsedResults;
+        } catch (error) {
+            await this.logger.logError(error, { text });
+            throw error;
         }
-        return parsedResults;
     }
 }
