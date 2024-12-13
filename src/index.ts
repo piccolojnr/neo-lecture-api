@@ -17,6 +17,7 @@ import userRoutes from './routes/users';
 import aiGeneratorRoutes from './routes/ai-generator';
 import apiKeyRoutes from './routes/api-keys';
 import adminRoutes from './routes/admin';
+import axios from 'axios';
 
 // Load environment variables
 dotenv.config();
@@ -80,6 +81,30 @@ app.use('/users', userRoutes);
 app.use('/ai', aiGeneratorRoutes);
 app.use('/api-keys', apiKeyRoutes);
 app.use('/admin', adminRoutes);
+
+// make a proxy endpoint for this http://54.237.184.84:8000/generate-pptx/
+app.use('/generate-pptx', (req: any, res: any) => {
+  // get flashcards from the request body
+  const flashcards = req.body.flashcards;
+  // check if flashcards are present
+  if (!flashcards) {
+    return res.status(400).json({ message: 'Flashcards are required' });
+  }
+  // check if flashcards are an array
+  if (!Array.isArray(flashcards)) {
+    return res.status(400).json({ message: 'Flashcards must be an array' });
+  }
+
+  // make a request to generate the pptx
+
+  const response = axios.post('http://54.237.184.84:8000/generate-pptx/', { flashcards });
+  response.then((response) => {
+    res.send(response.data);
+  }).catch((error) => {
+    res.status
+  });
+}
+);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
